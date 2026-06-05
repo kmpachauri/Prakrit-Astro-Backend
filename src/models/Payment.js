@@ -35,7 +35,7 @@ const PaymentSchema = new mongoose.Schema({
   },
   gateway: {
     type: String,
-    enum: ['razorpay', 'phonepe', 'cashfree'],
+    enum: ['razorpay'],
     default: 'razorpay'
   },
   serviceType: {

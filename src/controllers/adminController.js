@@ -397,6 +397,21 @@ exports.updateLandingPage = async (req, res) => {
     Object.assign(existingPage, req.body);
     const page = await existingPage.save();
 
+    if (req.body.settings) {
+      await SiteSetting.updateOne(
+        {},
+        {
+          $set: {
+            whatsappNumber: req.body.settings.whatsappNumber || '',
+            supportEmail: req.body.settings.supportEmail || '',
+            businessAddress: req.body.settings.businessAddress || ''
+          },
+          $setOnInsert: { websiteName: 'Prakrit Astro', activeLandingPageId: page._id }
+        },
+        { upsert: true }
+      );
+    }
+
     if (!page) {
       return res.status(404).json({ message: 'Landing page not found.' });
     }

@@ -23,6 +23,10 @@ const SiteSettingSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  businessAddress: {
+    type: String,
+    default: ''
+  },
   activeLandingPageId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'LandingPage',
@@ -30,7 +34,7 @@ const SiteSettingSchema = new mongoose.Schema({
   },
   paymentGateway: {
     type: String,
-    enum: ['razorpay', 'phonepe', 'cashfree'],
+    enum: ['razorpay'],
     default: 'razorpay'
   },
   seo: {

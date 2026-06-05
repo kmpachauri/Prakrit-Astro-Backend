@@ -1,16 +1,10 @@
 const Customer = require('../models/Customer');
 const LandingPage = require('../models/LandingPage');
 const Payment = require('../models/Payment');
-const SiteSetting = require('../models/SiteSetting');
-const paymentService = require('../services/paymentService');
+const razorpayProvider = require('../services/razorpayProvider');
 const { ensureCareerBoostPage } = require('../utils/careerBoostPage');
 
 const normalizePhone = (mobile = '') => mobile.replace(/[^\d]/g, '');
-
-const getGateway = async () => {
-  const settings = await SiteSetting.findOne();
-  return settings?.paymentGateway || process.env.ACTIVE_PAYMENT_GATEWAY || 'razorpay';
-};
 
 exports.createOrder = async (req, res) => {
   try {
@@ -34,7 +28,7 @@ exports.createOrder = async (req, res) => {
 
     const amount = Number(targetPage.pricing.offerPrice);
     const currency = targetPage.pricing.currency || 'INR';
-    const gateway = await getGateway();
+    const gateway = 'razorpay';
 
     let customer = await Customer.findOne({ mobile: normalizePhone(mobile) });
     if (!customer) {
@@ -58,8 +52,7 @@ exports.createOrder = async (req, res) => {
     await customer.save();
 
     const orderId = `PA_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-    const gatewayOrder = await paymentService.createOrder({
-      gateway,
+    const gatewayOrder = await razorpayProvider.createOrder({
       amount,
       currency,
       receipt: orderId,
@@ -117,8 +110,7 @@ exports.verifyPayment = async (req, res) => {
       return res.status(404).json({ message: 'Payment record not found.' });
     }
 
-    const verification = await paymentService.verifyPayment({
-      gateway: payment.gateway,
+    const verification = await razorpayProvider.verifyPayment({
       orderId,
       paymentId,
       signature
@@ -146,11 +138,7 @@ exports.webhook = async (req, res) => {
     const rawBody = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body);
     const signature = req.headers['x-razorpay-signature'];
     if (signature && process.env.RAZORPAY_WEBHOOK_SECRET) {
-      const valid = paymentService.verifyWebhookSignature({
-        gateway: 'razorpay',
-        body: rawBody,
-        signature
-      });
+      const valid = razorpayProvider.verifyWebhookSignature(rawBody, signature);
       if (!valid) {
         return res.status(400).json({ received: false, message: 'Invalid webhook signature.' });
       }
@@ -158,8 +146,6 @@ exports.webhook = async (req, res) => {
     const payload = rawBody ? JSON.parse(rawBody) : {};
     const orderId =
       payload?.payload?.payment?.entity?.order_id ||
-      payload?.data?.merchantTransactionId ||
-      payload?.merchantTransactionId ||
       payload?.orderId;
 
     if (!orderId) {
@@ -171,13 +157,12 @@ exports.webhook = async (req, res) => {
       return res.status(200).json({ received: true, message: 'Payment record not found locally.' });
     }
 
-    const code = payload?.code || payload?.data?.state || '';
-    if (payload?.event === 'payment.captured' || code === 'PAYMENT_SUCCESS' || code === 'COMPLETED') {
+    if (payload?.event === 'payment.captured') {
       payment.status = 'success';
-    } else if (payload?.event === 'payment.failed' || code === 'PAYMENT_ERROR' || code === 'FAILED') {
+    } else if (payload?.event === 'payment.failed') {
       payment.status = 'failed';
     }
-    payment.paymentId = payload?.payload?.payment?.entity?.id || payload?.data?.transactionId || payment.paymentId;
+    payment.paymentId = payload?.payload?.payment?.entity?.id || payment.paymentId;
     payment.rawResponse = { ...payment.rawResponse, webhook: payload };
     await payment.save();
 

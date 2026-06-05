@@ -6,6 +6,7 @@ const path = require('path');
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = require('./app');
+const syncAdminFromEnv = require('./utils/syncAdminFromEnv');
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/prakritastro';
@@ -13,8 +14,9 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/prakritast
 console.log('Starting Prakrit Astro Server...');
 
 mongoose.connect(MONGO_URI)
-.then(() => {
+.then(async () => {
   console.log('Connected to MongoDB database successfully.');
+  await syncAdminFromEnv();
   app.listen(PORT, () => {
     console.log(`Server is running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
   });

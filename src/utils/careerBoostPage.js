@@ -157,6 +157,8 @@ const defaultPage = {
   },
   settings: {
     whatsappNumber: '+919999999999',
+    supportEmail: 'theoccultschool1356@gmail.com',
+    businessAddress: 'R.S. Sharma, Pent House 01, Yash Residence, Ward No. 78, Bali Vihar, Mansarovar, Sanganer, Jaipur, Rajasthan - 302029',
     countdownEnabled: true,
     countdownHours: 6,
     countdownMinutes: 0,
@@ -214,7 +216,10 @@ async function ensureCareerBoostPage() {
       logoUrl: '/images/profile_logo.jpeg',
       defaultLanguage: 'hinglish',
       activeLandingPageId: page._id,
-      paymentGateway: 'razorpay'
+      paymentGateway: 'razorpay',
+      whatsappNumber: page.settings?.whatsappNumber || '',
+      supportEmail: page.settings?.supportEmail || '',
+      businessAddress: page.settings?.businessAddress || ''
     });
   } else if (String(settings.activeLandingPageId || '') !== String(page._id)) {
     settings.activeLandingPageId = page._id;

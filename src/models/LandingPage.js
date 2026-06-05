@@ -47,6 +47,8 @@ const LandingPageSchema = new mongoose.Schema({
   },
   settings: {
     whatsappNumber: { type: String, default: '' },
+    supportEmail: { type: String, default: '' },
+    businessAddress: { type: String, default: '' },
     countdownEnabled: { type: Boolean, default: true },
     countdownHours: { type: Number, default: 2 },
     countdownMinutes: { type: Number, default: 0 },
