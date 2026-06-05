@@ -4,6 +4,7 @@ const FAQ = require('../models/FAQ');
 
 const SLUG = 'prakrit-career-boost';
 const CONTENT_VERSION = 5;
+let defaultFaqsEnsured = false;
 
 const services = [
   { title: 'करियर मैपिंग साइंस', desc: 'कुंडली के दशम और द्वितीय भाव से बच्चे के सही प्रोफेशन को पहचानना।' },
@@ -166,6 +167,13 @@ const defaultPage = {
     offerText: 'Special Offer Active',
     timerHeadline: 'Registration closing soon',
     timerSubtext: 'Limited seats available for this batch.',
+    formFields: {
+      name: { visible: true, label: 'Parent Name / माता-पिता का नाम', required: true },
+      mobile: { visible: true, label: 'Mobile Number', required: true },
+      email: { visible: true, label: 'Email', required: false },
+      careerCategory: { visible: true, label: 'Student Class / Class', required: true },
+      notes: { visible: true, label: 'Child ke career/stream concern', required: false }
+    },
     contentVersion: CONTENT_VERSION
   }
 };
@@ -213,12 +221,15 @@ async function ensureCareerBoostPage() {
     await settings.save();
   }
 
-  for (const faq of defaultFAQs) {
-    await FAQ.updateOne(
-      { language: faq.language, question: faq.question },
-      { $setOnInsert: faq },
-      { upsert: true }
-    );
+  if (!defaultFaqsEnsured) {
+    for (const faq of defaultFAQs) {
+      await FAQ.updateOne(
+        { language: faq.language, question: faq.question },
+        { $setOnInsert: faq },
+        { upsert: true }
+      );
+    }
+    defaultFaqsEnsured = true;
   }
 
   return page;

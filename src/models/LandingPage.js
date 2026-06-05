@@ -58,7 +58,15 @@ const LandingPageSchema = new mongoose.Schema({
     offerText: { type: String, default: '' },
     timerHeadline: { type: String, default: '' },
     timerSubtext: { type: String, default: '' },
+    formFields: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
     contentVersion: { type: Number, default: 1 }
+  },
+  versionHistory: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: []
   }
 }, {
   timestamps: true

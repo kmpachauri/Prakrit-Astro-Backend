@@ -8,6 +8,7 @@ router.post('/login', adminController.login);
 
 // Protected admin routes
 router.get('/me', auth, adminController.getMe);
+router.put('/me/password', auth, adminController.changePassword);
 router.get('/dashboard', auth, adminController.getDashboard);
 
 // Payments management
@@ -22,6 +23,7 @@ router.get('/customers', auth, adminController.getCustomers);
 router.get('/landing-pages', auth, adminController.getLandingPages);
 router.post('/landing-pages', auth, adminController.createLandingPage);
 router.get('/landing-pages/:id', auth, adminController.getLandingPageById);
+router.put('/landing-pages/:id/restore-previous', auth, adminController.restorePreviousLandingPage);
 router.put('/landing-pages/:id', auth, adminController.updateLandingPage);
 router.put('/landing-pages/:id/activate', auth, adminController.activateLandingPage);
 

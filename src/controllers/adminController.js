@@ -60,43 +60,93 @@ exports.getMe = async (req, res) => {
   }
 };
 
+// Change current admin password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters.' });
+    }
+
+    const admin = await Admin.findById(req.user.id);
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found.' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, admin.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Current password is incorrect.' });
+    }
+
+    admin.passwordHash = await bcrypt.hash(newPassword, 10);
+    await admin.save();
+    res.json({ message: 'Password changed successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Dashboard Analytics
 exports.getDashboard = async (req, res) => {
   try {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    // 1. Calculations from DB
-    const allSuccessfulPayments = await Payment.find({ status: 'success' });
-    const todaySuccessfulPayments = await Payment.find({
-      status: 'success',
-      createdAt: { $gte: startOfToday }
-    });
+    const [
+      revenueStats,
+      paymentStatusStats,
+      totalCustomersCount,
+      page
+    ] = await Promise.all([
+      Payment.aggregate([
+        { $match: { status: 'success' } },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$amount' },
+            todayRevenue: {
+              $sum: {
+                $cond: [{ $gte: ['$createdAt', startOfToday] }, '$amount', 0]
+              }
+            },
+            successfulPayments: { $sum: 1 }
+          }
+        }
+      ]),
+      Payment.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      Customer.countDocuments(),
+      ensureCareerBoostPage()
+    ]);
 
-    const totalRevenue = allSuccessfulPayments.reduce((acc, p) => acc + p.amount, 0);
-    const todayRevenue = todaySuccessfulPayments.reduce((acc, p) => acc + p.amount, 0);
-
-    const totalPaymentsCount = await Payment.countDocuments();
-    const successfulPaymentsCount = allSuccessfulPayments.length;
-    const failedPaymentsCount = await Payment.countDocuments({ status: 'failed' });
-    const pendingPaymentsCount = await Payment.countDocuments({ status: 'pending' });
-
-    const totalCustomersCount = await Customer.countDocuments();
-
-    const page = await ensureCareerBoostPage();
+    const revenue = revenueStats[0] || {};
+    const statusCounts = paymentStatusStats.reduce((acc, item) => {
+      acc[item._id] = item.count;
+      return acc;
+    }, {});
+    const totalPaymentsCount = paymentStatusStats.reduce((sum, item) => sum + item.count, 0);
 
     res.json({
       metrics: {
-        totalRevenue,
-        todayRevenue,
+        totalRevenue: revenue.totalRevenue || 0,
+        todayRevenue: revenue.todayRevenue || 0,
         totalPayments: totalPaymentsCount,
-        successfulPayments: successfulPaymentsCount,
-        failedPayments: failedPaymentsCount,
-        pendingPayments: pendingPaymentsCount,
+        successfulPayments: revenue.successfulPayments || 0,
+        failedPayments: statusCounts.failed || 0,
+        pendingPayments: statusCounts.pending || 0,
         totalCustomers: totalCustomersCount,
         activeLandingPage: page.name,
         currentOfferPrice: page.pricing.offerPrice,
         activeMeetingMode: page.settings?.meetingMode || 'zoom'
+      },
+      activePage: {
+        _id: page._id,
+        pricing: page.pricing,
+        settings: page.settings
       }
     });
   } catch (error) {
@@ -119,7 +169,11 @@ exports.getPayments = async (req, res) => {
     if (startDate || endDate) {
       query.createdAt = {};
       if (startDate) query.createdAt.$gte = new Date(startDate);
-      if (endDate) query.createdAt.$lte = new Date(endDate);
+      if (endDate) {
+        const inclusiveEnd = new Date(endDate);
+        inclusiveEnd.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = inclusiveEnd;
+      }
     }
 
     // Process searches (Search by orderId, paymentId, or customer fields)
@@ -213,7 +267,29 @@ exports.updatePaymentStatus = async (req, res) => {
 // Get Customers
 exports.getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find().sort({ createdAt: -1 });
+    const { search, startDate, endDate, exportCsv } = req.query;
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { mobile: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { careerCategory: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const inclusiveEnd = new Date(endDate);
+        inclusiveEnd.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = inclusiveEnd;
+      }
+    }
+
+    const customers = await Customer.find(query).sort({ createdAt: -1 });
     
     // Supplement each customer with their last payment status
     const customerList = await Promise.all(
@@ -222,10 +298,27 @@ exports.getCustomers = async (req, res) => {
         return {
           ...c.toObject(),
           paymentStatus: lastPayment ? lastPayment.status : 'N/A',
-          lastPaymentAmount: lastPayment ? lastPayment.amount : 0
+          lastPaymentAmount: lastPayment ? lastPayment.amount : 0,
+          whatsappGroupLink: lastPayment ? lastPayment.whatsappGroupLinkAtPaymentTime : ''
         };
       })
     );
+
+    if (exportCsv === 'true') {
+      let csvContent = 'Date,Name,Mobile,Email,Career Category,Last Payment Status,Last Payment Amount,WhatsApp Group\n';
+      customerList.forEach(c => {
+        const date = c.createdAt.toISOString().slice(0, 10);
+        const name = c.name ? c.name.replace(/,/g, ' ') : 'N/A';
+        const mobile = c.mobile || 'N/A';
+        const email = c.email || 'N/A';
+        const category = c.careerCategory ? c.careerCategory.replace(/,/g, ' ') : 'N/A';
+        csvContent += `${date},${name},${mobile},${email},${category},${c.paymentStatus},${c.lastPaymentAmount},${c.whatsappGroupLink || 'N/A'}\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=customers_history.csv');
+      return res.status(200).send(csvContent);
+    }
 
     res.json(customerList);
   } catch (error) {
@@ -287,17 +380,54 @@ exports.getLandingPageById = async (req, res) => {
 // Edit Landing Page Content
 exports.updateLandingPage = async (req, res) => {
   try {
-    const page = await LandingPage.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true, runValidators: true }
-    );
+    const existingPage = await LandingPage.findById(req.params.id);
+    if (!existingPage) {
+      return res.status(404).json({ message: 'Landing page not found.' });
+    }
+
+    const snapshot = existingPage.toObject();
+    delete snapshot.versionHistory;
+    existingPage.versionHistory = [
+      ...(existingPage.versionHistory || []).slice(-9),
+      {
+        savedAt: new Date(),
+        page: snapshot
+      }
+    ];
+    Object.assign(existingPage, req.body);
+    const page = await existingPage.save();
 
     if (!page) {
       return res.status(404).json({ message: 'Landing page not found.' });
     }
 
     res.json(page);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Restore previous landing page version
+exports.restorePreviousLandingPage = async (req, res) => {
+  try {
+    const page = await LandingPage.findById(req.params.id);
+    if (!page) {
+      return res.status(404).json({ message: 'Landing page not found.' });
+    }
+
+    const previous = page.versionHistory?.pop();
+    if (!previous?.page) {
+      return res.status(400).json({ message: 'No previous version available.' });
+    }
+
+    const restored = previous.page;
+    delete restored._id;
+    delete restored.createdAt;
+    delete restored.updatedAt;
+    delete restored.__v;
+    Object.assign(page, restored);
+    await page.save();
+    res.json({ message: 'Previous landing page version restored.', page });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

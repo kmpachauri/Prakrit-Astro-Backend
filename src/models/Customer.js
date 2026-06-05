@@ -38,4 +38,7 @@ const CustomerSchema = new mongoose.Schema({
   timestamps: true
 });
 
+CustomerSchema.index({ mobile: 1 });
+CustomerSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Customer', CustomerSchema);
