@@ -140,8 +140,7 @@ exports.getDashboard = async (req, res) => {
         pendingPayments: statusCounts.pending || 0,
         totalCustomers: totalCustomersCount,
         activeLandingPage: page.name,
-        currentOfferPrice: page.pricing.offerPrice,
-        activeMeetingMode: page.settings?.meetingMode || 'zoom'
+        currentOfferPrice: page.pricing.offerPrice
       },
       activePage: {
         _id: page._id,
@@ -203,7 +202,7 @@ exports.getPayments = async (req, res) => {
 
     // Handle CSV exporting
     if (exportCsv === 'true') {
-      let csvContent = 'Date,Customer Name,Mobile,Email,Service,Amount,Status,Gateway,Order ID,Payment ID,Meeting Mode\n';
+      let csvContent = 'Date,Customer Name,Mobile,Email,Service,Amount,Status,Gateway,Order ID,Payment ID\n';
       
       payments.forEach(p => {
         const date = p.createdAt.toISOString().slice(0, 10);
@@ -216,9 +215,8 @@ exports.getPayments = async (req, res) => {
       const gateway = p.gateway;
       const orderId = p.orderId;
       const paymentId = p.paymentId || 'N/A';
-      const meetingMode = p.meetingMode || 'N/A';
 
-        csvContent += `${date},${name},${mobile},${email},${service},${amount},${status},${gateway},${orderId},${paymentId},${meetingMode}\n`;
+        csvContent += `${date},${name},${mobile},${email},${service},${amount},${status},${gateway},${orderId},${paymentId}\n`;
       });
 
       res.setHeader('Content-Type', 'text/csv');
@@ -339,7 +337,7 @@ exports.getLandingPages = async (req, res) => {
 // Create Landing Page Template
 exports.createLandingPage = async (req, res) => {
   try {
-    const { name, slug, templateKey, pricing, seo, media, settings, content } = req.body;
+    const { name, slug, templateKey, pricing, settings, content } = req.body;
     
     const existing = await LandingPage.findOne({ slug });
     if (existing) {
@@ -351,8 +349,6 @@ exports.createLandingPage = async (req, res) => {
       slug,
       templateKey: templateKey || 'standard',
       pricing,
-      seo,
-      media,
       settings,
       content
     });
@@ -601,6 +597,15 @@ exports.getFAQs = async (req, res) => {
 
 exports.createFAQ = async (req, res) => {
   try {
+    const question = (req.body.question || '').trim();
+    const answer = (req.body.answer || '').trim();
+    const existing = await FAQ.findOne({
+      question: { $regex: `^${question.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+      answer: { $regex: `^${answer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
+    });
+    if (existing) {
+      return res.status(409).json({ message: 'This FAQ already exists.', item: existing });
+    }
     const item = new FAQ(req.body);
     await item.save();
     res.status(201).json(item);

@@ -49,7 +49,14 @@ exports.getTestimonials = async (req, res) => {
 exports.getFAQs = async (req, res) => {
   try {
     const faqs = await FAQ.find({ isActive: true }).sort({ order: 1 });
-    res.json(faqs);
+    const seen = new Set();
+    const uniqueFaqs = faqs.filter((faq) => {
+      const key = `${faq.question || ''}::${faq.answer || ''}`.trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    res.json(uniqueFaqs);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

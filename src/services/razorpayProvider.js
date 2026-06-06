@@ -15,11 +15,11 @@ class RazorpayProvider {
   getClient() {
     if (!this.client) {
       if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-        console.warn('WARNING: Razorpay credentials are not set in environment variables.');
+        throw new Error('Razorpay credentials are not configured.');
       }
       this.client = new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID || 'mock_key_id',
-        key_secret: process.env.RAZORPAY_KEY_SECRET || 'mock_key_secret',
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
       });
     }
     return this.client;
@@ -28,16 +28,7 @@ class RazorpayProvider {
   async createOrder({ amount, currency = 'INR', receipt }) {
     try {
       if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-        const mockOrderId = `order_mock_${receipt || Date.now()}`;
-        return {
-          success: true,
-          mode: 'mock',
-          keyId: 'rzp_test_mock',
-          orderId: mockOrderId,
-          amount,
-          currency,
-          raw: { id: mockOrderId, amount: Math.round(amount * 100), currency, receipt }
-        };
+        throw new Error('Razorpay credentials are not configured.');
       }
 
       const razorpayClient = this.getClient();
@@ -51,7 +42,7 @@ class RazorpayProvider {
       const order = await razorpayClient.orders.create(options);
       return {
         success: true,
-        mode: 'live',
+        mode: 'razorpay',
         keyId: process.env.RAZORPAY_KEY_ID,
         orderId: order.id,
         amount: order.amount / 100,
@@ -60,15 +51,13 @@ class RazorpayProvider {
       };
     } catch (error) {
       console.error('Razorpay Order Creation Failed:', error);
-      throw new Error(`Razorpay Order Creation Failed: ${error.message}`);
+      const wrapped = new Error(`Razorpay Order Creation Failed: ${error.message}`);
+      wrapped.statusCode = error.statusCode || error.status || error.response?.statusCode;
+      throw wrapped;
     }
   }
 
   async verifyPayment({ orderId, paymentId, signature }) {
-    if (!paymentId || !signature) {
-      return { success: false, status: 'failed', paymentId, raw: { orderId, paymentId } };
-    }
-
     const success = this.verifySignature({ orderId, paymentId, signature });
     return {
       success,
@@ -80,7 +69,10 @@ class RazorpayProvider {
 
   verifySignature({ orderId, paymentId, signature }) {
     try {
-      const secret = process.env.RAZORPAY_KEY_SECRET || 'mock_key_secret';
+      if (!process.env.RAZORPAY_KEY_SECRET) {
+        throw new Error('Razorpay key secret is not configured.');
+      }
+      const secret = process.env.RAZORPAY_KEY_SECRET;
       const text = `${orderId}|${paymentId}`;
       const generatedSignature = crypto
         .createHmac('sha256', secret)
@@ -95,7 +87,10 @@ class RazorpayProvider {
 
   verifyWebhookSignature(payload, signature) {
     try {
-      const secret = process.env.RAZORPAY_WEBHOOK_SECRET || 'mock_webhook_secret';
+      if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
+        throw new Error('Razorpay webhook secret is not configured.');
+      }
+      const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
       const digest = crypto.createHmac('sha256', secret).update(payload).digest('hex');
       return digest === signature;
     } catch (error) {

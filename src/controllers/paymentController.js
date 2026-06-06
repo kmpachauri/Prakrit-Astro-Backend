@@ -29,6 +29,11 @@ exports.createOrder = async (req, res) => {
     const amount = Number(targetPage.pricing.offerPrice);
     const currency = targetPage.pricing.currency || 'INR';
     const gateway = 'razorpay';
+    const amountInPaise = Math.round(amount * 100);
+
+    if (!Number.isFinite(amount) || amountInPaise < 100) {
+      return res.status(400).json({ message: 'Minimum payment amount is ₹1.' });
+    }
 
     let customer = await Customer.findOne({ mobile: normalizePhone(mobile) });
     if (!customer) {
@@ -74,7 +79,6 @@ exports.createOrder = async (req, res) => {
       status: 'pending',
       gateway,
       serviceType: careerCategory || serviceType || 'Career Guidance',
-      meetingMode: targetPage.settings?.meetingMode || '',
       whatsappGroupLinkAtPaymentTime: targetPage.settings?.whatsappGroupLink || '',
       rawResponse: gatewayOrder.raw || gatewayOrder
     });
@@ -84,25 +88,25 @@ exports.createOrder = async (req, res) => {
       gateway,
       keyId: gatewayOrder.keyId || process.env.RAZORPAY_KEY_ID || '',
       orderId: paymentRecord.orderId,
+      order_id: paymentRecord.orderId,
       amount,
       currency,
       paymentUrl: gatewayOrder.paymentUrl || '',
-      mode: gatewayOrder.mode || 'live',
-      message: gatewayOrder.mode === 'mock'
-        ? 'Mock payment order created. Add gateway credentials to enable live checkout.'
-        : 'Payment order created.'
+      mode: gatewayOrder.mode || 'razorpay',
+      message: 'Payment order created.'
     });
   } catch (error) {
     console.error('Payment order creation error:', error);
-    res.status(500).json({ message: error.message });
+    const statusCode = error.statusCode === 401 ? 401 : 500;
+    res.status(statusCode).json({ message: error.message });
   }
 };
 
 exports.verifyPayment = async (req, res) => {
   try {
     const { orderId, paymentId, signature, rawResponse } = req.body;
-    if (!orderId) {
-      return res.status(400).json({ message: 'orderId is required.' });
+    if (!orderId || !paymentId || !signature) {
+      return res.status(400).json({ success: false, message: 'orderId, paymentId and signature are required.' });
     }
 
     const payment = await Payment.findOne({ orderId });
@@ -116,7 +120,7 @@ exports.verifyPayment = async (req, res) => {
       signature
     });
 
-    payment.status = verification.status || (verification.success ? 'success' : 'failed');
+    payment.status = verification.success ? 'success' : 'failed';
     payment.paymentId = verification.paymentId || payment.paymentId;
     payment.rawResponse = {
       ...payment.rawResponse,
@@ -126,9 +130,44 @@ exports.verifyPayment = async (req, res) => {
     };
     await payment.save();
 
-    res.json({ success: verification.success, payment });
+    if (!verification.success) {
+      return res.status(400).json({ success: false, message: 'Payment signature verification failed.', payment });
+    }
+
+    res.json({ success: true, payment });
   } catch (error) {
     console.error('Payment verification error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.markFailed = async (req, res) => {
+  try {
+    const { orderId, paymentId, rawResponse, reason } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'orderId is required.' });
+    }
+
+    const payment = await Payment.findOne({ orderId });
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Payment record not found.' });
+    }
+
+    if (payment.status !== 'success') {
+      payment.status = 'failed';
+    }
+    payment.paymentId = paymentId || payment.paymentId;
+    payment.rawResponse = {
+      ...payment.rawResponse,
+      failure: rawResponse || {},
+      failureReason: reason || rawResponse?.error?.description || 'checkout_failed',
+      failedAt: new Date()
+    };
+    await payment.save();
+
+    res.json({ success: true, payment });
+  } catch (error) {
+    console.error('Payment failed status update error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

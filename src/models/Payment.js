@@ -42,10 +42,6 @@ const PaymentSchema = new mongoose.Schema({
     type: String,
     default: 'Jyotishi Consultation'
   },
-  meetingMode: {
-    type: String,
-    default: ''
-  },
   whatsappGroupLinkAtPaymentTime: {
     type: String,
     default: ''

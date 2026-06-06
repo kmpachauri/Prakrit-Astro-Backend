@@ -6,14 +6,13 @@ const SLUG = 'prakrit-career-boost';
 const CONTENT_VERSION = 5;
 let defaultFaqsEnsured = false;
 
-const services = [
-  { title: 'करियर मैपिंग साइंस', desc: 'कुंडली के दशम और द्वितीय भाव से बच्चे के सही प्रोफेशन को पहचानना।' },
-  { title: 'फोकस और याददाश्त', desc: 'ग्रहों के आसान ज्योतिषीय उपाय जो एकाग्रता और पढ़ाई में मन लगाने की क्षमता बढ़ाते हैं।' },
-  { title: 'लाखों रुपयों की सीधी बचत', desc: '10वीं में सही फैसला लेकर गलत कोचिंग, गलत कॉलेज और तनाव से बचना।' },
-  { title: 'स्ट्रीम सिलेक्शन', desc: 'साइंस, कॉमर्स या आर्ट्स का चुनाव ग्रहों की युति के आधार पर समझना।' }
-];
-
 const funnelContent = {
+    generalSection: {
+      brandName: 'Prakrit Astro',
+      headerTagline: 'ज्योतिष से सही दिशा, बच्चे का सुनहरा भविष्य',
+      supportLabel: 'सपोर्ट',
+      whatsappMessage: 'Hello, I have a query about Prakrit Astro.'
+    },
     announcementBar: 'सीमित सीटें उपलब्ध | केवल इस बैच के लिए ₹77/- विशेष ऑफर',
     hero: {
       question: 'क्या आपका बच्चा 8वीं, 9वीं या 10वीं क्लास में है?',
@@ -22,6 +21,16 @@ const funnelContent = {
       masterclassTag: '1 घंटे की लाइव ऑनलाइन मास्टरक्लास',
       ctaText: 'हाँ! मैं अपने बच्चे की सीट सुरक्षित करना चाहता हूँ - बुक नाउ',
       priceNote: 'केवल इस बैच के लिए'
+    },
+    careerDirectionSection: {
+      kicker: 'क्यों जरूरी है सही करियर दिशा?',
+      headline: 'क्या आप सही करियर दिशा के बिना अपने बच्चे के साल और पैसे जोखिम में डाल रहे हैं?',
+      priceLabel: '1 घंटे की लाइव मास्टरक्लास',
+      questions: [
+        'बच्चा किस क्षेत्र में सबसे अच्छा करेगा?',
+        'कौन-सा करियर उसके स्वभाव और क्षमता के अनुसार है?',
+        'भविष्य में किस क्षेत्र में सफलता की संभावना अधिक है?'
+      ]
     },
     problemSection: {
       title: 'आज के माता-पिता की सबसे बड़ी 3 गलतियाँ',
@@ -41,7 +50,6 @@ const funnelContent = {
         { title: 'स्ट्रीम सिलेक्शन', desc: 'साइंस, कॉमर्स या आर्ट्स? ग्रहों की युति के आधार पर सटीक और वैज्ञानिक चुनाव।' }
       ]
     },
-    services: { title: 'मास्टरक्लास के मुख्य फोकस एरिया', items: services },
     revealSection: {
       title: 'मास्टरक्लास का महा-आकर्षण',
       subtitle: 'विशेष अवसर',
@@ -57,25 +65,46 @@ const funnelContent = {
       title: 'मिलिए अपने मार्गदर्शक से',
       name: 'Pandit Ramendra & Rekha',
       role: 'Director - Tattoobaba Art Factory Pvt. Ltd. & Founder - Prakrit Career Jyotish',
-      quote: 'एक बिजनेस लीडर और करियर कंसल्टेंट के रूप में, मैंने देखा है कि कैसे युवा गलत करियर चुनकर जिंदगी के सबसे कीमती साल गंवा देते हैं। मेरा मिशन प्राकृत ज्योतिष के प्राचीन विज्ञान को आधुनिक करियर काउंसलिंग से जोड़कर, 8वीं से 10वीं के बच्चों को उनके जीवन की सही “प्राकृत” दिशा दिखाना है।'
+      quote: 'एक बिजनेस लीडर और करियर कंसल्टेंट के रूप में, मैंने देखा है कि कैसे युवा गलत करियर चुनकर जिंदगी के सबसे कीमती साल गंवा देते हैं। मेरा मिशन प्राकृत ज्योतिष के प्राचीन विज्ञान को आधुनिक करियर काउंसलिंग से जोड़कर, 8वीं से 10वीं के बच्चों को उनके जीवन की सही “प्राकृत” दिशा दिखाना है।',
+      brandLine: 'ASTRO & GEMS 369',
+      bullets: [
+        '36+ वर्षों का प्राकृत ज्योतिष अनुभव',
+        'हजारों बच्चों और परिवारों को सही दिशा देने का अनुभव',
+        'टैरो, ज्योतिष, अंक ज्योतिष एवं रत्न विज्ञान में विशेषज्ञता'
+      ]
     },
-    whyChoose: {
-      title: 'यह मास्टरक्लास किन पेरेंट्स के लिए उपयोगी है?',
-      items: ['8वीं क्लास के पेरेंट्स', '9वीं क्लास के पेरेंट्स', '10वीं क्लास के पेरेंट्स', 'स्ट्रीम सिलेक्शन को लेकर कन्फ्यूज परिवार', 'कोचिंग का फैसला लेने वाले पेरेंट्स', 'बच्चे का नेचुरल टैलेंट समझना चाहने वाले पेरेंट्स']
+    testimonialSection: {
+      titlePrefix: 'संतुष्ट माता-पिता के',
+      titleHighlight: 'अनुभव'
     },
-    offer: {
-      title: 'फीस: ₹1,999/- नहीं, मात्र ₹77/-',
-      body: 'यह ऑफर केवल इस बैच के लिए है। रजिस्ट्रेशन के बाद आपको WhatsApp group join link मिलेगा जहाँ मास्टरक्लास details शेयर होंगी।'
+    faqSection: {
+      titlePrefix: 'अक्सर पूछे जाने वाले',
+      titleHighlight: 'सवाल (FAQ)'
     },
     footerSection: {
+      headline: 'अंतिम आमंत्रण',
+      countdownLabel: 'ऑफर समाप्त होने में शेष समय',
       urgencyTitle: 'समय तेजी से निकल रहा है, और आपके बच्चे का भविष्य दांव पर है!',
       urgencyDesc: 'सीटें सीमित हैं केवल 100 पैरेंट्स प्रति बैच',
       urgencyPrice: 'आज ही रजिस्टर करें - मात्र ₹77/- में',
       ctaText: 'अपने बच्चे का भविष्य सुरक्षित करें - अभी बुक करें',
+      bullets: [
+        'लाइव ऑनलाइन मास्टरक्लास',
+        'बच्चे की सही करियर दिशा जानें',
+        'सुरक्षित भविष्य की ओर कदम बढ़ाएं'
+      ],
+      trustBadges: ['Secure Payment', 'No Fake Promises', 'Privacy Protected'],
       secureText: 'Secure payment via trusted gateway'
     },
-    finalCta: { title: 'अपने बच्चे की सही करियर दिशा जानने के लिए सीट बुक करें', ctaText: 'अभी बुक करें' },
-    footerDisclaimer: ''
+    siteFooterSection: {
+      links: [
+        { label: 'Privacy Policy', href: '/privacy-policy' },
+        { label: 'Terms & Conditions', href: '/terms' },
+        { label: 'Refund Policy', href: '/refund-policy' },
+        { label: 'Contact Support', href: '/contact' }
+      ],
+      copyrightName: 'Prakrit Astro'
+    }
 };
 
 const content = {
@@ -129,9 +158,7 @@ const faqItems = [
   }
 ];
 
-const defaultFAQs = ['hindi', 'hinglish', 'english'].flatMap((language) =>
-  faqItems.map((item) => ({ ...item, language }))
-);
+const defaultFAQs = faqItems.map((item) => ({ ...item, language: 'hinglish' }));
 
 const defaultPage = {
   name: 'Prakrit Career Boost',
@@ -145,16 +172,6 @@ const defaultPage = {
     offerPrice: 77,
     currency: 'INR'
   },
-  seo: {
-    title: 'Prakrit Career Boost',
-    description: '8th, 9th and 10th class students ke parents ke liye Prakrit Career Boost live career astrology masterclass.',
-    keywords: ['Prakrit Career Boost', 'Student Career Astrology', 'Stream Selection', 'Career Masterclass', 'Prakrit Astro']
-  },
-  media: {
-    logo: '/images/profile_logo.jpeg',
-      heroImage: '/images/career-boost-hero.png',
-    guruImage: '/images/profile_logo.jpeg'
-  },
   settings: {
     whatsappNumber: '+919999999999',
     supportEmail: 'theoccultschool1356@gmail.com',
@@ -163,12 +180,7 @@ const defaultPage = {
     countdownHours: 6,
     countdownMinutes: 0,
     paymentEnabled: true,
-    meetingMode: 'zoom',
-    meetingDescription: 'Live online session. Meeting details WhatsApp group me share hongi.',
     whatsappGroupLink: '',
-    offerText: 'Special Offer Active',
-    timerHeadline: 'Registration closing soon',
-    timerSubtext: 'Limited seats available for this batch.',
     formFields: {
       name: { visible: true, label: 'Parent Name / माता-पिता का नाम', required: true },
       mobile: { visible: true, label: 'Mobile Number', required: true },
@@ -192,11 +204,6 @@ async function ensureCareerBoostPage() {
     page.status = 'active';
     page.content = defaultPage.content;
     page.pricing = defaultPage.pricing;
-    page.seo = defaultPage.seo;
-    page.media = {
-      ...defaultPage.media,
-      ...(page.media || {})
-    };
     page.settings = {
       ...defaultPage.settings,
       ...(page.settings || {}),

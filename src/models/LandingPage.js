@@ -35,16 +35,6 @@ const LandingPageSchema = new mongoose.Schema({
     offerPrice: { type: Number, required: true },
     currency: { type: String, default: 'INR' }
   },
-  seo: {
-    title: { type: String, default: '' },
-    description: { type: String, default: '' },
-    keywords: [{ type: String }]
-  },
-  media: {
-    logo: { type: String, default: '' },
-    heroImage: { type: String, default: '' },
-    guruImage: { type: String, default: '' }
-  },
   settings: {
     whatsappNumber: { type: String, default: '' },
     supportEmail: { type: String, default: '' },
@@ -52,14 +42,8 @@ const LandingPageSchema = new mongoose.Schema({
     countdownEnabled: { type: Boolean, default: true },
     countdownHours: { type: Number, default: 2 },
     countdownMinutes: { type: Number, default: 0 },
-    countdownEndTime: { type: Date },
     paymentEnabled: { type: Boolean, default: true },
-    meetingMode: { type: String, enum: ['whatsapp_call', 'google_meet', 'zoom', 'phone_call', 'whatsapp_group'], default: 'zoom' },
-    meetingDescription: { type: String, default: '' },
     whatsappGroupLink: { type: String, default: '' },
-    offerText: { type: String, default: '' },
-    timerHeadline: { type: String, default: '' },
-    timerSubtext: { type: String, default: '' },
     formFields: {
       type: mongoose.Schema.Types.Mixed,
       default: {}
