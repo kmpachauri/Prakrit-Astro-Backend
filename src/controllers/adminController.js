@@ -381,6 +381,23 @@ exports.updateLandingPage = async (req, res) => {
       return res.status(404).json({ message: 'Landing page not found.' });
     }
 
+    const allowedFields = [
+      'name',
+      'slug',
+      'templateKey',
+      'isActive',
+      'status',
+      'content',
+      'pricing',
+      'settings'
+    ];
+    const updates = allowedFields.reduce((acc, field) => {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+        acc[field] = req.body[field];
+      }
+      return acc;
+    }, {});
+
     const snapshot = existingPage.toObject();
     delete snapshot.versionHistory;
     existingPage.versionHistory = [
@@ -390,17 +407,17 @@ exports.updateLandingPage = async (req, res) => {
         page: snapshot
       }
     ];
-    Object.assign(existingPage, req.body);
+    Object.assign(existingPage, updates);
     const page = await existingPage.save();
 
-    if (req.body.settings) {
+    if (updates.settings) {
       await SiteSetting.updateOne(
         {},
         {
           $set: {
-            whatsappNumber: req.body.settings.whatsappNumber || '',
-            supportEmail: req.body.settings.supportEmail || '',
-            businessAddress: req.body.settings.businessAddress || ''
+            whatsappNumber: updates.settings.whatsappNumber || '',
+            supportEmail: updates.settings.supportEmail || '',
+            businessAddress: updates.settings.businessAddress || ''
           },
           $setOnInsert: { websiteName: 'Prakrit Astro', activeLandingPageId: page._id }
         },

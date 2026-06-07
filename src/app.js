@@ -20,7 +20,7 @@ app.use((req, res, next) => {
   if (req.originalUrl === '/api/payment/webhook') {
     next();
   } else {
-    express.json()(req, res, next);
+    express.json({ limit: '1mb' })(req, res, next);
   }
 });
 
@@ -42,7 +42,7 @@ app.get('/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled Server Error:', err.stack);
-  res.status(500).json({
+  res.status(err.status || 500).json({
     message: err.message || 'Internal Server Error occurred.'
   });
 });
