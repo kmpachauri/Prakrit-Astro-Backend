@@ -25,7 +25,7 @@ class RazorpayProvider {
     return this.client;
   }
 
-  async createOrder({ amount, currency = 'INR', receipt }) {
+  async createOrder({ amount, currency = 'INR', receipt, notes = {} }) {
     try {
       if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
         throw new Error('Razorpay credentials are not configured.');
@@ -37,6 +37,7 @@ class RazorpayProvider {
         amount: Math.round(amount * 100),
         currency,
         receipt,
+        notes,
       };
       
       const order = await razorpayClient.orders.create(options);

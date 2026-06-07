@@ -8,10 +8,14 @@ const normalizePhone = (mobile = '') => mobile.replace(/[^\d]/g, '');
 
 exports.createOrder = async (req, res) => {
   try {
-    const { name, mobile, email, careerCategory, serviceType, preferredLanguage, notes, landingPageId } = req.body;
+    const { name, mobile, email, state, careerCategory, serviceType, preferredLanguage, notes, landingPageId } = req.body;
 
     if (!name || !mobile || normalizePhone(mobile).length < 10) {
       return res.status(400).json({ message: 'Name and a valid mobile number are required.' });
+    }
+
+    if (!state) {
+      return res.status(400).json({ message: 'State is required.' });
     }
 
     const targetPage = landingPageId
@@ -41,6 +45,7 @@ exports.createOrder = async (req, res) => {
         name,
         mobile: normalizePhone(mobile),
         email,
+        state,
         preferredLanguage: preferredLanguage || 'hinglish',
         careerCategory: careerCategory || serviceType || '',
         notes: notes || '',
@@ -49,6 +54,7 @@ exports.createOrder = async (req, res) => {
     } else {
       customer.name = name;
       customer.email = email || customer.email;
+      customer.state = state || customer.state;
       customer.preferredLanguage = preferredLanguage || customer.preferredLanguage;
       customer.careerCategory = careerCategory || serviceType || customer.careerCategory;
       customer.notes = notes || customer.notes;
@@ -65,7 +71,17 @@ exports.createOrder = async (req, res) => {
         id: customer._id.toString(),
         name,
         email,
-        mobile: normalizePhone(mobile)
+        mobile: normalizePhone(mobile),
+        state
+      },
+      notes: {
+        customerId: customer._id.toString(),
+        customerName: name,
+        mobile: normalizePhone(mobile),
+        email: email || '',
+        state,
+        serviceType: careerCategory || serviceType || 'Career Guidance',
+        landingPageId: targetPage._id.toString()
       },
       redirectUrl: `${req.headers.origin || 'http://localhost:5173'}/payment-success?orderId=${orderId}`
     });

@@ -16,6 +16,11 @@ const CustomerSchema = new mongoose.Schema({
     trim: true,
     lowercase: true
   },
+  state: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   preferredLanguage: {
     type: String,
     enum: ['hinglish', 'hindi', 'english'],
