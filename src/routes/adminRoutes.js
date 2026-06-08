@@ -18,6 +18,10 @@ router.put('/payments/:id/status', auth, adminController.updatePaymentStatus);
 
 // Customers list
 router.get('/customers', auth, adminController.getCustomers);
+router.put('/customers/schedule-meeting', auth, adminController.scheduleCustomerMeeting);
+router.put('/customers/complete-meeting', auth, adminController.completeScheduledMeetings);
+router.put('/customers/:id/status', auth, adminController.updateCustomerWorkflowStatus);
+router.put('/customers/:id/phase2-meeting', auth, adminController.updateCustomerPhase2Meeting);
 
 // Landing Pages management
 router.get('/landing-pages', auth, adminController.getLandingPages);

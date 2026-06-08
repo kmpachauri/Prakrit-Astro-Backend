@@ -42,9 +42,23 @@ const PaymentSchema = new mongoose.Schema({
     type: String,
     default: 'Jyotishi Consultation'
   },
+  checkoutType: {
+    type: String,
+    enum: ['campaign', 'personalized'],
+    default: 'campaign'
+  },
   whatsappGroupLinkAtPaymentTime: {
     type: String,
     default: ''
+  },
+  customerSnapshot: {
+    name: { type: String, default: '' },
+    mobile: { type: String, default: '' },
+    email: { type: String, default: '' },
+    state: { type: String, default: '' },
+    preferredLanguage: { type: String, default: 'hinglish' },
+    careerCategory: { type: String, default: '' },
+    notes: { type: String, default: '' }
   },
   rawResponse: {
     type: mongoose.Schema.Types.Mixed,

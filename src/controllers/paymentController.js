@@ -5,19 +5,73 @@ const razorpayProvider = require('../services/razorpayProvider');
 const { ensureCareerBoostPage } = require('../utils/careerBoostPage');
 
 const normalizePhone = (mobile = '') => mobile.replace(/[^\d]/g, '');
+const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
+
+const upsertCustomerForSuccessfulPayment = async (payment) => {
+  if (payment.customerId) return payment.customerId;
+
+  const snapshot = payment.customerSnapshot || {};
+  const mobile = normalizePhone(snapshot.mobile);
+  const email = normalizeEmail(snapshot.email);
+  if (!snapshot.name || (!mobile && !email)) return null;
+
+  let customer = null;
+  if (mobile) {
+    customer = await Customer.findOne({ mobile });
+  }
+  if (!customer && email) {
+    customer = await Customer.findOne({ email });
+  }
+  if (!customer) {
+    customer = new Customer({
+      name: snapshot.name,
+      mobile,
+      email,
+      state: snapshot.state,
+      preferredLanguage: snapshot.preferredLanguage || 'hinglish',
+      careerCategory: snapshot.careerCategory || payment.serviceType || '',
+      notes: snapshot.notes || '',
+      workflowStatus: 'new_payment',
+      meetingDate: null,
+      sourceLandingPage: payment.landingPageId
+    });
+  } else {
+    customer.name = snapshot.name || customer.name;
+    customer.mobile = mobile || customer.mobile;
+    customer.email = email || customer.email;
+    customer.state = snapshot.state || customer.state;
+    customer.preferredLanguage = snapshot.preferredLanguage || customer.preferredLanguage;
+    customer.careerCategory = snapshot.careerCategory || payment.serviceType || customer.careerCategory;
+    customer.notes = snapshot.notes || customer.notes;
+    customer.sourceLandingPage = payment.landingPageId || customer.sourceLandingPage;
+    if (!customer.workflowStatus) {
+      customer.workflowStatus = 'new_payment';
+    }
+  }
+
+  await customer.save();
+  payment.customerId = customer._id;
+  await payment.save();
+  return customer._id;
+};
 
 exports.createOrder = async (req, res) => {
   try {
-    const { name, mobile, email, state, careerCategory, serviceType, preferredLanguage, notes, landingPageId } = req.body;
+    const { name, mobile, email, state, careerCategory, serviceType, preferredLanguage, notes, landingPageId, checkoutType, expectedAmount } = req.body;
 
     if (!name || !mobile || normalizePhone(mobile).length < 10) {
       return res.status(400).json({ message: 'Name and a valid mobile number are required.' });
+    }
+
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({ message: 'Email is required.' });
     }
 
     if (!state) {
       return res.status(400).json({ message: 'State is required.' });
     }
 
+    const normalizedCheckoutType = checkoutType === 'personalized' ? 'personalized' : 'campaign';
     const targetPage = landingPageId
       ? await LandingPage.findById(landingPageId)
       : await ensureCareerBoostPage();
@@ -30,37 +84,46 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Payments are currently disabled for this landing page.' });
     }
 
-    const amount = Number(targetPage.pricing.offerPrice);
+    const campaignAmount = Number(targetPage.pricing.offerPrice);
+    const personalizedAmount = Number(targetPage.pricing.personalizedOfferPrice);
+    const amount = normalizedCheckoutType === 'personalized' ? personalizedAmount : campaignAmount;
+    const originalAmount = normalizedCheckoutType === 'personalized'
+      ? Number(targetPage.pricing.personalizedOriginalPrice)
+      : Number(targetPage.pricing.originalPrice);
     const currency = targetPage.pricing.currency || 'INR';
     const gateway = 'razorpay';
     const amountInPaise = Math.round(amount * 100);
+
+    if (normalizedCheckoutType === 'personalized' && (!Number.isFinite(personalizedAmount) || amountInPaise < 100)) {
+      return res.status(400).json({ message: 'Personalized pricing is not configured correctly. Please update it from the admin panel before taking payment.' });
+    }
 
     if (!Number.isFinite(amount) || amountInPaise < 100) {
       return res.status(400).json({ message: 'Minimum payment amount is ₹1.' });
     }
 
-    let customer = await Customer.findOne({ mobile: normalizePhone(mobile) });
-    if (!customer) {
-      customer = new Customer({
-        name,
-        mobile: normalizePhone(mobile),
-        email,
-        state,
-        preferredLanguage: preferredLanguage || 'hinglish',
-        careerCategory: careerCategory || serviceType || '',
-        notes: notes || '',
-        sourceLandingPage: targetPage._id
+    const normalizedExpectedAmount = Number(expectedAmount);
+    if (Number.isFinite(normalizedExpectedAmount) && normalizedExpectedAmount !== amount) {
+      return res.status(409).json({
+        message: `Server price mismatch detected for ${normalizedCheckoutType} checkout. Expected ₹${normalizedExpectedAmount}, but configured amount is ₹${amount}.`,
+        checkoutType: normalizedCheckoutType,
+        expectedAmount: normalizedExpectedAmount,
+        configuredAmount: amount
       });
-    } else {
-      customer.name = name;
-      customer.email = email || customer.email;
-      customer.state = state || customer.state;
-      customer.preferredLanguage = preferredLanguage || customer.preferredLanguage;
-      customer.careerCategory = careerCategory || serviceType || customer.careerCategory;
-      customer.notes = notes || customer.notes;
-      customer.sourceLandingPage = targetPage._id;
     }
-    await customer.save();
+
+    const customerSnapshot = {
+      name,
+      mobile: normalizePhone(mobile),
+      email: normalizeEmail(email),
+      state,
+      preferredLanguage: preferredLanguage || 'hinglish',
+      careerCategory: careerCategory || serviceType || '',
+      notes: notes || ''
+    };
+    const resolvedServiceType = normalizedCheckoutType === 'personalized'
+      ? 'Personalized 1-to-1 Session'
+      : (careerCategory || serviceType || 'Career Guidance');
 
     const orderId = `PA_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
     const gatewayOrder = await razorpayProvider.createOrder({
@@ -68,35 +131,41 @@ exports.createOrder = async (req, res) => {
       currency,
       receipt: orderId,
       customer: {
-        id: customer._id.toString(),
         name,
         email,
         mobile: normalizePhone(mobile),
         state
       },
       notes: {
-        customerId: customer._id.toString(),
         customerName: name,
         mobile: normalizePhone(mobile),
-        email: email || '',
+        email: normalizeEmail(email),
         state,
-        serviceType: careerCategory || serviceType || 'Career Guidance',
+        serviceType: resolvedServiceType,
+        checkoutType: normalizedCheckoutType,
         landingPageId: targetPage._id.toString()
       },
       redirectUrl: `${req.headers.origin || 'http://localhost:5173'}/payment-success?orderId=${orderId}`
     });
 
     const paymentRecord = await Payment.create({
-      customerId: customer._id,
       landingPageId: targetPage._id,
       orderId: gatewayOrder.orderId || orderId,
       amount,
       currency,
       status: 'pending',
       gateway,
-      serviceType: careerCategory || serviceType || 'Career Guidance',
+      serviceType: resolvedServiceType,
+      checkoutType: normalizedCheckoutType,
       whatsappGroupLinkAtPaymentTime: targetPage.settings?.whatsappGroupLink || '',
-      rawResponse: gatewayOrder.raw || gatewayOrder
+      customerSnapshot,
+      rawResponse: {
+        ...(gatewayOrder.raw || gatewayOrder),
+        pricingContext: {
+          checkoutType: normalizedCheckoutType,
+          originalAmount
+        }
+      }
     });
 
     res.status(201).json({
@@ -150,6 +219,7 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Payment signature verification failed.', payment });
     }
 
+    await upsertCustomerForSuccessfulPayment(payment);
     res.json({ success: true, payment });
   } catch (error) {
     console.error('Payment verification error:', error);
@@ -220,6 +290,9 @@ exports.webhook = async (req, res) => {
     payment.paymentId = payload?.payload?.payment?.entity?.id || payment.paymentId;
     payment.rawResponse = { ...payment.rawResponse, webhook: payload };
     await payment.save();
+    if (payment.status === 'success') {
+      await upsertCustomerForSuccessfulPayment(payment);
+    }
 
     res.json({ received: true });
   } catch (error) {

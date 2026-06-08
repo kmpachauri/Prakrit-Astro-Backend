@@ -3,8 +3,33 @@ const SiteSetting = require('../models/SiteSetting');
 const FAQ = require('../models/FAQ');
 
 const SLUG = 'prakrit-career-boost';
-const CONTENT_VERSION = 5;
+const CONTENT_VERSION = 7;
 let defaultFaqsEnsured = false;
+
+const normalizeFaqKey = (question = '', answer = '') =>
+  `${question}::${answer}`.trim().toLowerCase();
+
+const isPlainObject = (value) =>
+  Object.prototype.toString.call(value) === '[object Object]';
+
+const mergeMissingDefaults = (existingValue, defaultValue) => {
+  if (Array.isArray(defaultValue)) {
+    return Array.isArray(existingValue) ? existingValue : defaultValue;
+  }
+
+  if (isPlainObject(defaultValue)) {
+    const safeExisting = isPlainObject(existingValue) ? existingValue : {};
+    return Object.keys(defaultValue).reduce(
+      (acc, key) => {
+        acc[key] = mergeMissingDefaults(safeExisting[key], defaultValue[key]);
+        return acc;
+      },
+      { ...safeExisting }
+    );
+  }
+
+  return existingValue === undefined ? defaultValue : existingValue;
+};
 
 const funnelContent = {
     generalSection: {
@@ -44,10 +69,11 @@ const funnelContent = {
     insideSection: {
       title: 'आप इस मास्टरक्लास में क्या सीखेंगे?',
       points: [
-        { title: 'करियर मैपिंग साइंस', desc: 'कुंडली के दशम और द्वितीय भाव से बच्चे के सही प्रोफेशन सरकारी नौकरी, कॉर्पोरेट, वकालत, या बिजनेस को पहचानना।' },
-        { title: 'फोकस और याददाश्त', desc: 'ग्रहों के वो आसान ज्योतिषीय उपाय जो बच्चे की एकाग्रता और पढ़ाई में मन लगाने की क्षमता को 2X बढ़ा देंगे।' },
-        { title: 'लाखों रुपयों की सीधी बचत', desc: 'कैसे 10वीं क्लास में लिया गया एक सही फैसला आपके कॉलेज की लाखों की फीस और मानसिक तनाव को बचा सकता है।' },
-        { title: 'स्ट्रीम सिलेक्शन', desc: 'साइंस, कॉमर्स या आर्ट्स? ग्रहों की युति के आधार पर सटीक और वैज्ञानिक चुनाव।' }
+        { title: 'जन्मकुंडली विश्लेषण', desc: 'ग्रहों की स्थिति के आधार पर बच्चे की प्रमुख क्षमताओं की पहचान।' },
+        { title: 'नेचुरल टैलेंट पहचान', desc: 'बच्चे की विशेष रुचियों और प्राकृतिक गुणों को समझना।' },
+        { title: 'सही करियर दिशा', desc: 'भविष्य में सफलता के लिए उपयुक्त करियर विकल्पों का चयन।' },
+        { title: 'भविष्य की संभावनाएँ', desc: 'आने वाले समय में बेहतर अवसर और संभावित चुनौतियों का विश्लेषण।' },
+        { title: 'लाइव Q&A', desc: 'आपके सभी सवालों के स्पष्ट और व्यावहारिक उत्तर।' }
       ]
     },
     revealSection: {
@@ -170,6 +196,8 @@ const defaultPage = {
   pricing: {
     originalPrice: 1999,
     offerPrice: 77,
+    personalizedOriginalPrice: 4999,
+    personalizedOfferPrice: 999,
     currency: 'INR'
   },
   settings: {
@@ -202,10 +230,10 @@ async function ensureCareerBoostPage() {
     page.templateKey = defaultPage.templateKey;
     page.isActive = true;
     page.status = 'active';
-    page.content = defaultPage.content;
-    page.pricing = defaultPage.pricing;
+    page.content = mergeMissingDefaults(page.content, defaultPage.content);
+    page.pricing = mergeMissingDefaults(page.pricing, defaultPage.pricing);
     page.settings = {
-      ...defaultPage.settings,
+      ...mergeMissingDefaults(page.settings, defaultPage.settings),
       ...(page.settings || {}),
       contentVersion: CONTENT_VERSION
     };
@@ -234,13 +262,25 @@ async function ensureCareerBoostPage() {
   }
 
   if (!defaultFaqsEnsured) {
-    for (const faq of defaultFAQs) {
-      await FAQ.updateOne(
-        { language: faq.language, question: faq.question },
-        { $setOnInsert: faq },
-        { upsert: true }
-      );
+    const existingFaqs = await FAQ.find().sort({ createdAt: 1 });
+    const seenFaqs = new Set();
+
+    for (const faq of existingFaqs) {
+      const key = normalizeFaqKey(faq.question, faq.answer);
+      if (!key || seenFaqs.has(key)) {
+        await FAQ.deleteOne({ _id: faq._id });
+        continue;
+      }
+      seenFaqs.add(key);
     }
+
+    const faqCount = await FAQ.countDocuments();
+    if (faqCount === 0) {
+      for (const faq of defaultFAQs) {
+        await FAQ.create(faq);
+      }
+    }
+
     defaultFaqsEnsured = true;
   }
 

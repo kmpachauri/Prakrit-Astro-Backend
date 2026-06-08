@@ -33,6 +33,8 @@ const LandingPageSchema = new mongoose.Schema({
   pricing: {
     originalPrice: { type: Number, required: true },
     offerPrice: { type: Number, required: true },
+    personalizedOriginalPrice: { type: Number, default: 0 },
+    personalizedOfferPrice: { type: Number, default: 0 },
     currency: { type: String, default: 'INR' }
   },
   settings: {
