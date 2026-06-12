@@ -46,6 +46,14 @@ const LandingPageSchema = new mongoose.Schema({
     countdownMinutes: { type: Number, default: 0 },
     paymentEnabled: { type: Boolean, default: true },
     whatsappGroupLink: { type: String, default: '' },
+    categoryOptions: {
+      type: [String],
+      default: undefined
+    },
+    paymentPageContent: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
     formFields: {
       type: mongoose.Schema.Types.Mixed,
       default: {}

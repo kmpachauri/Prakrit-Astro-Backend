@@ -63,10 +63,6 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Name and a valid mobile number are required.' });
     }
 
-    if (!email || !String(email).trim()) {
-      return res.status(400).json({ message: 'Email is required.' });
-    }
-
     if (!state) {
       return res.status(400).json({ message: 'State is required.' });
     }
@@ -82,6 +78,11 @@ exports.createOrder = async (req, res) => {
 
     if (targetPage.settings && targetPage.settings.paymentEnabled === false) {
       return res.status(400).json({ message: 'Payments are currently disabled for this landing page.' });
+    }
+
+    const emailFieldSettings = targetPage.settings?.formFields?.email || {};
+    if (emailFieldSettings.visible !== false && emailFieldSettings.required !== false && !normalizeEmail(email)) {
+      return res.status(400).json({ message: 'Email is required.' });
     }
 
     const campaignAmount = Number(targetPage.pricing.offerPrice);

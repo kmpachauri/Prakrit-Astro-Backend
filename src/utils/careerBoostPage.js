@@ -3,7 +3,7 @@ const SiteSetting = require('../models/SiteSetting');
 const FAQ = require('../models/FAQ');
 
 const SLUG = 'prakrit-career-boost';
-const CONTENT_VERSION = 7;
+const CONTENT_VERSION = 8;
 let defaultFaqsEnsured = false;
 
 const normalizeFaqKey = (question = '', answer = '') =>
@@ -209,6 +209,29 @@ const defaultPage = {
     countdownMinutes: 0,
     paymentEnabled: true,
     whatsappGroupLink: '',
+    categoryOptions: ['8th Class', '9th Class', '10th Class', 'Stream Selection Query', 'Confusion About Future', 'Other'],
+    paymentPageContent: {
+      campaignBadge: 'Secure Booking',
+      campaignTitle: 'Secure Your Child Career Guidance Seat',
+      campaignSubtitle: 'Parent details fill karein. Payment ke baad confirmation aur WhatsApp group link mil jayega.',
+      campaignOfferLabel: 'Today Offer',
+      campaignOfferDescription: '1 hour live online masterclass booking',
+      campaignInfoText: 'Details carefully fill karein. Isi number par confirmation aur meeting details share hongi.',
+      personalizedBadge: 'Secure Booking',
+      personalizedTitle: 'Secure Your Personalized one to one Session Seat',
+      personalizedSubtitle: 'Existing webinar parents ke liye special second-step booking. Details fill karein aur personalized session secure karein.',
+      personalizedOfferLabel: 'Today Offer',
+      personalizedOfferDescription: 'Personalized one to one session booking',
+      personalizedInfoText: 'Details carefully fill karein. Isi number & Email par confirmation aur Meeting details share hongi.',
+      formTitle: 'Booking Details',
+      requiredHint: 'All required fields marked with *.',
+      secureCheckoutText: 'Secure Razorpay checkout',
+      confirmationText: 'Confirmation after payment',
+      securedText: 'Razorpay secure checkout',
+      payButtonText: 'Pay Securely',
+      loadingText: 'Loading booking details...',
+      backButtonText: 'Back to Home'
+    },
     formFields: {
       name: { visible: true, label: 'Parent Name / माता-पिता का नाम', required: true },
       mobile: { visible: true, label: 'Mobile Number', required: true },
